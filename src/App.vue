@@ -5,8 +5,12 @@
 </template>
 
 <style>
+  * {
+    box-sizing: border-box;
+  }
+
   html {
-    font-family: Poppins, sans-serif;
+    font-family: Mali, sans-serif;
   }
 
   html,

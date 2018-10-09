@@ -1,25 +1,39 @@
 <template>
   <div class="game">
-    <div>
-      <pre>
-        level: {{level}}
-      </pre>
-    </div><div>
-      <pre>
-        time left: {{timeLeft}}
-      </pre>
-    </div>
-    <div>
-      <pre>
-        state: {{state}}
-      </pre>
+    <div class="navigation">
+      <div class="col left">
+        <router-link class="back" to="startScreen">
+          <span class="key">back to</span>
+          <div class="value">menu</div>
+        </router-link>
+      </div>
+
+      <div class="col center">
+        <span class="key">level</span>
+        <span class="value">{{level}}</span>
+      </div>
+
+      <div class="col right">
+        <span class="key">time</span>
+        <span class="value">{{timeLeft}} sec</span>
+      </div>
     </div>
 
-    <div class="board" :class="{disabled: state !== 'input'}">
-      <m-block v-for="blockId in blocks"
-               :key="blockId"
-               @click.native="blockTouched($event, blockId)"
-               :class="{presented: presentedBlock === blockId}"></m-block>
+    <div class="board-wrapper">
+      <div class="countdown" :class="{visible: countdown > 0}">
+        {{countdown}}
+      </div>
+
+      <div class="state" :class="{visible: niceState !== null}">
+        {{niceState}}
+      </div>
+
+      <div class="board" :class="{disabled: state !== 'input'}">
+        <m-block v-for="blockId in blocks"
+                :key="blockId"
+                @click.native="blockTouched($event, blockId)"
+                :class="{presented: presentedBlock === blockId}"></m-block>
+      </div>
     </div>
   </div>
 </template>
@@ -43,7 +57,20 @@ export default {
       presentedBlock: null,
       timeLeft: 0,
       inputInterval: null,
+      countdown: 3,
     };
+  },
+  computed: {
+    niceState() {
+      switch (this.state) {
+        case 'input':
+          return 'Your turn';
+        case 'presentation':
+          return 'Presenting';
+        default:
+          return null;
+      }
+    },
   },
   watch: {
     input(newInput) {
@@ -51,7 +78,9 @@ export default {
         return;
       }
 
-      if (newInput[newInput.length - 1] !== this.solution[newInput.length - 1]) {
+      if (
+        newInput[newInput.length - 1] !== this.solution[newInput.length - 1]
+      ) {
         this.handleWrongMatch();
         return;
       }
@@ -105,9 +134,7 @@ export default {
         }
 
         if (this.presentedBlock === null) {
-          const currentBlock = blocksToPresent.shift();
-
-          this.presentedBlock = currentBlock;
+          this.presentedBlock = blocksToPresent.shift();
           return;
         }
 
@@ -117,8 +144,7 @@ export default {
       this.isPresenting = true;
       this.state = 'presentation';
 
-      presentationInterval = setInterval(presentBlock, 800);
-      presentBlock();
+      presentationInterval = setInterval(presentBlock, 650);
     },
     startUserInput() {
       this.state = 'input';
@@ -134,6 +160,28 @@ export default {
     },
     stopInputInterval() {
       clearInterval(this.inputInterval);
+    },
+    countdownTimer() {
+      return new Promise((resolve) => {
+        let countdownInterval = null;
+
+        this.stopInputInterval();
+        this.countdown = 3;
+        this.state = 'countdown';
+
+        const decrementCountdown = () => {
+          this.countdown -= 1;
+
+          if (this.countdown === 0) {
+            clearInterval(countdownInterval);
+            return resolve();
+          }
+
+          return null;
+        };
+
+        countdownInterval = setInterval(decrementCountdown, 1000);
+      });
     },
     handleWin() {
       this.stopInputInterval();
@@ -157,7 +205,10 @@ export default {
       this.generateSolution();
       this.timeLeft = this.solution.length + 1;
 
-      this.presentSolution();
+      this.countdownTimer()
+        .then(() => {
+          this.presentSolution();
+        });
     },
   },
   mounted() {
@@ -167,27 +218,134 @@ export default {
 </script>
 
 <style scoped>
-  .game {
-    align-items: center;
-    background: #F3E9D2;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    justify-content: center;
-    padding: 0 20px;
-  }
+.game {
+  background: #243447;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
 
-  .board {
-    display: flex;
-    flex-wrap: wrap;
-    width: 100%;
-  }
+.navigation {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  height: 80px;
+  justify-content: space-between;
+  position: relative;
+  z-index: 10;
+}
 
-  .board.disabled {
-    cursor: not-allowed;
-  }
+.navigation .back {
+  color: inherit;
+  text-decoration: none;
+}
 
-  .board.disabled > div {
-    pointer-events: none;
-  }
+.navigation .col {
+  flex: 1 1 33.33%;
+  padding: 0 20px;
+}
+
+.col.left {
+  text-align: left;
+}
+
+.col.center {
+  text-align: center;
+}
+
+.col.right {
+  text-align: right;
+}
+
+.col .key {
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 5px;
+}
+
+.col .value {
+  display: block;
+  font-size: 20px;
+}
+
+.board-wrapper {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+  margin-top: -80px;
+  padding: 0 5px;
+  position: relative;
+}
+
+.countdown {
+  align-items: center;
+  background: rgba(0, 0, 0, .8);
+  border-radius: 50%;
+  border: 5px solid lightgrey;
+  bottom: 0;
+  box-shadow: 0 6px 15px 1px rgba(0, 0, 0, .35);
+  color: #fff;
+  display: flex;
+  flex-direction: row;
+  font-size: 35vw;
+  font-weight: 800;
+  height: 60vw;
+  justify-content: center;
+  left: 0;
+  margin: auto;
+  opacity: 0;
+  position: absolute;
+  right: 0;
+  text-align: center;
+  transform: scale(.5);
+  transition: .25s ease;
+  top: 0;
+  visibility: hidden;
+  width: 60vw;
+  will-change: opacity, transform, visibility;
+  z-index: 5;
+}
+
+.countdown.visible {
+  opacity: 1;
+  transform: scale(1);
+  visibility: visible;
+}
+
+.state {
+  align-items: center;
+  display: flex;
+  font-size: 32px;
+  font-weight: 800;
+  height: 50px;
+  justify-content: center;
+  margin: 0 0 4vh;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.state.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.board {
+  display: flex;
+  flex-wrap: wrap;
+  position: relative;
+  width: 100%;
+  z-index: 1;
+}
+
+.board.disabled {
+  cursor: not-allowed;
+}
+
+.board.disabled > div {
+  pointer-events: none;
+}
 </style>

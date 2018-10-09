@@ -10,6 +10,7 @@ export default new Router({
   routes: [
     {
       path: '/',
+      alias: '/startScreen',
       name: 'startScreen',
       component: StartScreen,
     },
